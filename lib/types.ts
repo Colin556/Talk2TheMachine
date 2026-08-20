@@ -1,7 +1,7 @@
 /**
- * Orpheus model served through Groq's OpenAI-compatible API.
+ * groq/compound-mini served through Groq's OpenAI-compatible API.
  */
-export const CHAT_MODEL = 'canopylabs/orpheus-v1-english'
+export const CHAT_MODEL = 'groq/compound-mini'
 
 export type ChatUsage = {
   promptTokens: number
