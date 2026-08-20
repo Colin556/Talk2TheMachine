@@ -28,6 +28,15 @@ function formatNumber(n: number) {
   return n.toLocaleString('en-US')
 }
 
+function formatUsd(value: number) {
+  return value.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 6,
+  })
+}
+
 function StatRow({
   icon,
   label,
@@ -59,18 +68,33 @@ function StatRow({
 export function UsageSidebar({
   activeMessages,
   sessionTotal,
+  sessionCost,
   conversationCount,
 }: {
   activeMessages: ChatUIMessage[]
   sessionTotal: number
+  sessionCost: number
   conversationCount: number
 }) {
   const usage = sumUsage(activeMessages)
+  const convoCost = activeMessages.reduce(
+    (sum, m) => sum + (m.metadata?.costUsd ?? 0),
+    0,
+  )
   const assistantTurns = activeMessages.filter(
     (m) => m.role === 'assistant' && (m.metadata?.totalTokens ?? 0) > 0,
   ).length
   const avgPerTurn =
     assistantTurns > 0 ? Math.round(usage.total / assistantTurns) : 0
+  const avgLatencyMs =
+    assistantTurns > 0
+      ? Math.round(
+          activeMessages.reduce(
+            (sum, m) => sum + (m.metadata?.responseTimeMs ?? 0),
+            0,
+          ) / assistantTurns,
+        )
+      : 0
 
   // Ratio bar between input and output tokens for the active conversation.
   const denom = usage.input + usage.output
@@ -135,6 +159,32 @@ export function UsageSidebar({
             value={avgPerTurn}
             accentClass="bg-sidebar-accent"
           />
+          <StatRow
+            icon={<Gauge className="size-4 text-sidebar-primary" />}
+            label="Avg latency (ms)"
+            value={avgLatencyMs}
+            accentClass="bg-sidebar-primary/15"
+          />
+        </div>
+
+        <div className="mt-5 rounded-xl border border-sidebar-border p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50">
+            Estimated cost
+          </p>
+          <div className="mt-2 space-y-1 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-sidebar-foreground/60">This conversation</span>
+              <span className="font-mono text-sidebar-foreground">
+                {formatUsd(convoCost)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sidebar-foreground/60">Session total</span>
+              <span className="font-mono text-sidebar-foreground">
+                {formatUsd(sessionCost)}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Session-wide total across all conversations */}

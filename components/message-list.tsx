@@ -4,13 +4,6 @@ import { useEffect, useRef } from 'react'
 import { Bot, User } from 'lucide-react'
 import type { ChatUIMessage } from '@/lib/types'
 
-function messageText(message: ChatUIMessage) {
-  return message.parts
-    .filter((p) => p.type === 'text')
-    .map((p) => (p as { text: string }).text)
-    .join('')
-}
-
 function TypingDots() {
   return (
     <span className="inline-flex items-center gap-1 py-1" aria-label="Assistant is typing">
@@ -30,7 +23,7 @@ export function MessageList({
   status,
 }: {
   messages: ChatUIMessage[]
-  status: 'submitted' | 'streaming' | 'ready' | 'error'
+  status: 'idle' | 'loading' | 'error'
 }) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -39,14 +32,14 @@ export function MessageList({
   }, [messages, status])
 
   const waitingForFirstToken =
-    status === 'submitted' &&
+    status === 'loading' &&
     messages[messages.length - 1]?.role === 'user'
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
       {messages.map((message) => {
         const isUser = message.role === 'user'
-        const text = messageText(message)
+        const text = message.content
         return (
           <div
             key={message.id}
@@ -83,7 +76,10 @@ export function MessageList({
                 <span className="px-1 font-mono text-[11px] text-muted-foreground/70">
                   {message.metadata?.inputTokens ?? 0} in ·{' '}
                   {message.metadata?.outputTokens ?? 0} out ·{' '}
-                  {message.metadata?.totalTokens ?? 0} total
+                  {message.metadata?.totalTokens ?? 0} total ·{' '}
+                  {message.metadata?.responseTimeMs ?? 0} ms · ${
+                    (message.metadata?.costUsd ?? 0).toFixed(6)
+                  }
                 </span>
               )}
             </div>

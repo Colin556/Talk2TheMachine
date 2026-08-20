@@ -1,21 +1,32 @@
-import type { UIMessage } from 'ai'
-
 /**
- * Model routed through Groq via the Vercel AI Gateway.
- * The Gateway model string identifies the model; provider routing to Groq
- * is pinned with `providerOptions.gateway.only` in the chat route.
+ * Llama 3 model served through Groq's OpenAI-compatible API.
  */
-export const CHAT_MODEL = 'openai/gpt-oss-120b'
+export const CHAT_MODEL = 'llama-3.1-8b-instant'
+
+export type ChatUsage = {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
 
 export type ChatMetadata = {
   createdAt?: number
   model?: string
+  usage?: ChatUsage
   inputTokens?: number
   outputTokens?: number
   totalTokens?: number
+  responseTimeMs?: number
+  costUsd?: number
 }
 
-export type ChatUIMessage = UIMessage<ChatMetadata>
+export type ChatUIMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: number
+  metadata?: ChatMetadata
+}
 
 export type Conversation = {
   id: string

@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { ChatPanel } from '@/components/chat-panel'
 import { HistorySidebar } from '@/components/history-sidebar'
 import { UsageSidebar } from '@/components/usage-sidebar'
-import { totalTokensOf, useConversations } from '@/lib/use-conversations'
+import { totalCostOf, totalTokensOf, useConversations } from '@/lib/use-conversations'
 
 export default function Page() {
   const {
@@ -20,6 +20,11 @@ export default function Page() {
 
   const sessionTotal = useMemo(
     () => conversations.reduce((sum, c) => sum + totalTokensOf(c), 0),
+    [conversations],
+  )
+
+  const sessionCost = useMemo(
+    () => conversations.reduce((sum, c) => sum + totalCostOf(c), 0),
     [conversations],
   )
 
@@ -61,6 +66,7 @@ export default function Page() {
       <UsageSidebar
         activeMessages={activeConversation?.messages ?? []}
         sessionTotal={sessionTotal}
+        sessionCost={sessionCost}
         conversationCount={conversations.length}
       />
     </main>

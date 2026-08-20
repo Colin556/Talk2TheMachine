@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MessageSquareText, RotateCcw, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Composer } from '@/components/composer'
@@ -48,25 +46,87 @@ export function ChatPanel({
   conversation: Conversation
   onMessagesChange: (id: string, messages: ChatUIMessage[]) => void
 }) {
-  const { messages, sendMessage, status, stop, error, regenerate } =
-    useChat<ChatUIMessage>({
-      // Re-key per conversation so switching threads resets the hook state
-      // and seeds it with that conversation's stored messages.
-      id: conversation.id,
-      messages: conversation.messages,
-      transport: new DefaultChatTransport({ api: '/api/chat' }),
-    })
+  const [messages, setMessages] = useState<ChatUIMessage[]>(conversation.messages)
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [error, setError] = useState<string | null>(null)
+  const controllerRef = useRef<AbortController | null>(null)
 
-  // Persist the thread whenever it settles (ready) or errors out, so token
-  // metadata attached on finish is captured in storage.
   useEffect(() => {
-    if (status === 'ready' || status === 'error') {
-      onMessagesChange(conversation.id, messages)
-    }
+    onMessagesChange(conversation.id, messages)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, messages])
+  }, [messages])
 
-  const isBusy = status === 'submitted' || status === 'streaming'
+  const requestAssistant = useCallback(async (thread: ChatUIMessage[]) => {
+    controllerRef.current?.abort()
+    const controller = new AbortController()
+    controllerRef.current = controller
+    setError(null)
+    setStatus('loading')
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: thread }),
+        signal: controller.signal,
+      })
+
+      if (!res.ok) {
+        const maybeJson = await res.json().catch(() => null)
+        const message = maybeJson?.error ?? `Request failed with status ${res.status}`
+        throw new Error(message)
+      }
+
+      const payload = (await res.json()) as {
+        message: ChatUIMessage
+      }
+
+      setMessages((prev) => [...prev, payload.message])
+      setStatus('idle')
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setStatus('idle')
+        return
+      }
+      const message = err instanceof Error ? err.message : 'Unknown request error'
+      setError(message)
+      setStatus('error')
+    }
+  }, [])
+
+  const sendMessage = useCallback(
+    async ({ text }: { text: string }) => {
+      const userMessage: ChatUIMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: text,
+        createdAt: Date.now(),
+      }
+
+      const nextMessages = [...messages, userMessage]
+      setMessages(nextMessages)
+      await requestAssistant(nextMessages)
+    },
+    [messages, requestAssistant],
+  )
+
+  const regenerate = useCallback(async () => {
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
+    if (!lastUserMessage) return
+    const userCutoff = messages.findLastIndex((m) => m.role === 'user')
+    const baseMessages = userCutoff >= 0 ? messages.slice(0, userCutoff + 1) : messages
+    setMessages(baseMessages)
+    await requestAssistant(baseMessages)
+  }, [messages, requestAssistant])
+
+  const stop = useCallback(() => {
+    controllerRef.current?.abort()
+    setStatus('idle')
+  }, [])
+
+  const isBusy = status === 'loading'
 
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col bg-background">
@@ -82,13 +142,9 @@ export function ChatPanel({
             <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
               <TriangleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-destructive">
-                  Couldn&apos;t reach the model
-                </p>
+                <p className="text-sm font-medium text-destructive">Request failed</p>
                 <p className="mt-0.5 text-xs text-muted-foreground text-pretty">
-                  The request to the AI Gateway failed. This is often a billing
-                  or configuration issue on the gateway rather than a problem
-                  with your message.
+                  {error}
                 </p>
               </div>
               <Button

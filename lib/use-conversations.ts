@@ -29,11 +29,7 @@ function loadFromStorage(): Conversation[] {
 export function deriveTitle(messages: ChatUIMessage[]): string {
   const firstUser = messages.find((m) => m.role === 'user')
   if (!firstUser) return 'New conversation'
-  const text = firstUser.parts
-    .filter((p) => p.type === 'text')
-    .map((p) => (p as { text: string }).text)
-    .join(' ')
-    .trim()
+  const text = firstUser.content.trim()
   if (!text) return 'New conversation'
   return text.length > 42 ? `${text.slice(0, 42)}…` : text
 }
@@ -43,6 +39,10 @@ export function totalTokensOf(conversation: Conversation): number {
     (sum, m) => sum + (m.metadata?.totalTokens ?? 0),
     0,
   )
+}
+
+export function totalCostOf(conversation: Conversation): number {
+  return conversation.messages.reduce((sum, m) => sum + (m.metadata?.costUsd ?? 0), 0)
 }
 
 export function useConversations() {
