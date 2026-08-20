@@ -1,7 +1,7 @@
 /**
- * Llama 3 model served through Groq's OpenAI-compatible API.
+ * Orpheus model served through Groq's OpenAI-compatible API.
  */
-export const CHAT_MODEL = 'llama-3.1-8b-instant'
+export const CHAT_MODEL = 'canopylabs/orpheus-v1-english'
 
 export type ChatUsage = {
   promptTokens: number

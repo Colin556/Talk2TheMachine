@@ -6,7 +6,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v
 
 This app now uses a direct `fetch` call to Groq's OpenAI-compatible endpoint in [app/api/chat/route.ts](app/api/chat/route.ts).
 
-- Model: `llama-3.1-8b-instant` (Llama 3 on Groq free tier)
+- Model: `canopylabs/orpheus-v1-english`
 - Auth: `Authorization: Bearer <GROQ_API_KEY>`
 - Headers: `Content-Type: application/json`
 - Request handling: `async/await`
