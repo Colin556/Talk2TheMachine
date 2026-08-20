@@ -1,47 +1,68 @@
+'use client'
+
+import { useMemo } from 'react'
+import { ChatPanel } from '@/components/chat-panel'
+import { HistorySidebar } from '@/components/history-sidebar'
+import { UsageSidebar } from '@/components/usage-sidebar'
+import { totalTokensOf, useConversations } from '@/lib/use-conversations'
+
 export default function Page() {
+  const {
+    hydrated,
+    conversations,
+    activeId,
+    activeConversation,
+    setActiveId,
+    createConversation,
+    deleteConversation,
+    saveMessages,
+  } = useConversations()
+
+  const sessionTotal = useMemo(
+    () => conversations.reduce((sum, c) => sum + totalTokensOf(c), 0),
+    [conversations],
+  )
+
   return (
-    <main
-      style={{
-        colorScheme: 'light dark',
-        position: 'relative',
-        display: 'flex',
-        minHeight: '100vh',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'light-dark(#fff, #000)',
-        color: 'light-dark(#000, #fff)',
-      }}
-    >
-      <svg
-        aria-hidden="true"
-        style={{ width: 80, height: 80 }}
-        width={80}
-        height={80}
-        fill="none"
-        viewBox="0 0 20 20"
-        xmlns="http://www.w3.org/2000/svg"
-        stroke="currentColor"
-        strokeWidth="0.5"
-      >
-        <path
-          d="M14.2 14.2H17V6.9375C17 4.76288 15.2371 3 13.0625 3H5.8V5.8M14.2 14.2V7.79063L7.79062 14.2H14.2ZM14.2 14.2V17H6.9375C4.76288 17 3 15.2371 3 13.0625V5.8H5.8M5.8 5.8V12.2313L12.2313 5.8H5.8Z"
-          strokeLinejoin="round"
+    <main className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+      <HistorySidebar
+        conversations={conversations}
+        activeId={activeId}
+        onSelect={setActiveId}
+        onCreate={createConversation}
+        onDelete={deleteConversation}
+      />
+
+      {activeConversation ? (
+        <ChatPanel
+          key={activeConversation.id}
+          conversation={activeConversation}
+          onMessagesChange={saveMessages}
         />
-      </svg>
-      <p
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: 'calc(50% + 56px)',
-          transform: 'translateX(-50%)',
-          whiteSpace: 'nowrap',
-          fontSize: '14px',
-          fontWeight: 500,
-          color: 'light-dark(#71717a, #a1a1aa)',
-        }}
-      >
-        Your v0 generation will show here.
-      </p>
+      ) : (
+        <section className="flex flex-1 flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+          <p className="max-w-sm text-sm text-muted-foreground text-pretty">
+            {hydrated
+              ? 'Select a conversation or start a new one to begin chatting.'
+              : 'Loading your conversations…'}
+          </p>
+          {hydrated && (
+            <button
+              type="button"
+              onClick={createConversation}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              New conversation
+            </button>
+          )}
+        </section>
+      )}
+
+      <UsageSidebar
+        activeMessages={activeConversation?.messages ?? []}
+        sessionTotal={sessionTotal}
+        conversationCount={conversations.length}
+      />
     </main>
   )
 }
